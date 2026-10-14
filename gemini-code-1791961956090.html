@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Playground Inspector: This, That, These, Those</title>
+    <style>
+        :root {
+            --color-this: #ff6b6b;
+            --color-that: #4ecdc4;
+            --color-these: #ffe66d;
+            --color-those: #c06c84;
+            --bg-color: #f7f9fc;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Comic Sans MS', 'Lexend', 'Arial Rounded MT Bold', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        #start-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .start-btn {
+            font-size: 36px;
+            padding: 20px 40px;
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 8px 0 #3b9b95;
+            cursor: pointer;
+        }
+        .start-btn:active { transform: translateY(8px); box-shadow: none; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 800px;
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .game-board {
+            background: white;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 30px;
+            padding: 20px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .scene-container {
+            background: #eef9ff;
+            border-radius: 20px;
+            height: 240px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 4px solid #bce1f0;
+        }
+
+        .hand { font-size: 70px; position: absolute; left: 15px; z-index: 10; transition: all 0.3s;}
+        
+        .objects-wrapper { 
+            position: absolute; 
+            display: flex; 
+            gap: 10px; 
+            align-items: center; 
+            transition: all 0.3s; 
+        }
+
+        .item-svg {
+            width: 130px;
+            height: 130px;
+            filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.15));
+        }
+
+        /* Distance Visual Cues */
+        .distance-line {
+            position: absolute; left: 100px; right: 80px; top: 50%;
+            border-bottom: 6px dashed #9bc5d9;
+            display: none;
+        }
+
+        .scene-near .objects-wrapper { left: 110px; transform: scale(1.1); }
+        .scene-far .objects-wrapper { right: 20px; transform: scale(0.65); }
+        .scene-far .distance-line { display: block; }
+
+        .sentence-box {
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .blank {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 4px solid #333;
+            color: #ff6b6b;
+        }
+
+        .speaker-btn {
+            background: #e9ecef;
+            border: none;
+            font-size: 28px;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #ced4da;
+        }
+        .speaker-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .choice-btn {
+            font-size: 32px;
+            font-weight: bold;
+            padding: 22px;
+            border: none;
+            border-radius: 20px;
+            color: #333;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .choice-btn:active { transform: scale(0.95); }
+        .btn-this { background-color: var(--color-this); color: white; box-shadow: 0 8px 0 #d95a5a; }
+        .btn-that { background-color: var(--color-that); color: white; box-shadow: 0 8px 0 #3b9b95; }
+        .btn-these { background-color: var(--color-these); box-shadow: 0 8px 0 #d4bd54; }
+        .btn-those { background-color: var(--color-those); color: white; box-shadow: 0 8px 0 #9c5569; }
+
+        @keyframes correctBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .correct { animation: correctBounce 0.5s ease; background-color: #51cf66 !important; color: white !important;}
+        .wrong { animation: wrongShake 0.4s ease; opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1 style="font-size: 44px; text-align:center;">Playground Inspector<br>Grammar Game</h1>
+        <button class="start-btn" onclick="startGame()">Tap to Start Game! 🎮</button>
+    </div>
+
+    <div class="header">
+        <div>Score: <span id="score">0</span></div>
+        <div>Combo: <span id="combo">0</span>x</div>
+    </div>
+
+    <div class="game-board" id="game-board">
+        <div class="scene-container" id="scene">
+            <div class="hand">🫵</div>
+            <div class="distance-line"></div>
+            <div class="objects-wrapper" id="visual-objects"></div>
+        </div>
+
+        <div class="sentence-box">
+            <button class="speaker-btn" onclick="readSentence(false)">🔊</button>
+            <span>Look at <span class="blank" id="blank-space">____</span> <span id="noun-text">slide</span>.</span>
+        </div>
+
+        <div class="controls">
+            <button class="choice-btn btn-this" onclick="checkAnswer('this')">THIS</button>
+            <button class="choice-btn btn-that" onclick="checkAnswer('that')">THAT</button>
+            <button class="choice-btn btn-these" onclick="checkAnswer('these')">THESE</button>
+            <button class="choice-btn btn-those" onclick="checkAnswer('those')">THOSE</button>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx;
+
+        // Custom Inline Vector Graphics for Genuine Playground Equipment
+        const playgroundItems = [
+            { 
+                singular: 'bench', 
+                plural: 'benches',
+                svg: `<svg class="item-svg" viewBox="0 0 100 100">
+                        <rect x="15" y="45" width="70" height="12" rx="3" fill="#8d5524"/>
+                        <rect x="15" y="28" width="70" height="12" rx="3" fill="#a0522d"/>
+                        <rect x="20" y="57" width="8" height="25" fill="#444"/>
+                        <rect x="72" y="57" width="8" height="25" fill="#444"/>
+                        <rect x="18" y="28" width="6" height="35" fill="#333"/>
+                        <rect x="76" y="28" width="6" height="35" fill="#333"/>
+                      </svg>`
+            },
+            { 
+                singular: 'monkey bar', 
+                plural: 'monkey bars',
+                svg: `<svg class="item-svg" viewBox="0 0 100 100">
+                        <path d="M 10 75 L 10 30 L 90 30 L 90 75" stroke="#e63946" stroke-width="6" fill="none"/>
+                        <line x1="25" y1="30" x2="25" y2="75" stroke="#e63946" stroke-width="4"/>
+                        <line x1="75" y1="30" x2="75" y2="75" stroke="#e63946" stroke-width="4"/>
+                        <line x1="25" y1="35" x2="90" y2="35" stroke="#457b9d" stroke-width="4"/>
+                        <line x1="25" y1="48" x2="90" y2="48" stroke="#457b9d" stroke-width="4"/>
+                        <line x1="25" y1="61" x2="90" y2="61" stroke="#457b9d" stroke-width="4"/>
+                      </svg>`
+            },
+            { 
+                singular: 'slide', 
+                plural: 'slides',
+                svg: `<svg class="item-svg" viewBox="0 0 100 100">
+                        <path d="M 20 75 L 35 25 L 45 25 L 85 75" stroke="#3a86ff" stroke-width="8" fill="none" stroke-linecap="round"/>
+                        <line x1="20" y1="75" x2="35" y2="25" stroke="#ff006e" stroke-width="6"/>
+                        <line x1="24" y1="60" x2="32" y2="60" stroke="#ffbe0b" stroke-width="4"/>
+                        <line x1="27" y1="48" x2="33" y2="48" stroke="#ffbe0b" stroke-width="4"/>
+                        <line x1="30" y1="36" x2="35" y2="36" stroke="#ffbe0b" stroke-width="4"/>
+                      </svg>`
+            },
+            { 
+                singular: 'roundabout', 
+                plural: 'roundabouts',
+                svg: `<svg class="item-svg" viewBox="0 0 100 100">
+                        <ellipse cx="50" cy="65" rx="40" ry="18" fill="#2a9d8f"/>
+                        <ellipse cx="50" cy="65" rx="30" ry="12" fill="#e9c46a"/>
+                        <path d="M 30 63 C 30 40, 70 40, 70 63" stroke="#e76f51" stroke-width="5" fill="none"/>
+                        <path d="M 50 65 C 50 35, 50 35, 50 65" stroke="#e76f51" stroke-width="5" fill="none"/>
+                        <rect x="47" y="65" width="6" height="18" fill="#264653"/>
+                      </svg>`
+            },
+            { 
+                singular: 'see-saw', 
+                plural: 'see-saws',
+                svg: `<svg class="item-svg" viewBox="0 0 100 100">
+                        <polygon points="50,55 38,78 62,78" fill="#ffb703"/>
+                        <line x1="10" y1="45" x2="90" y2="65" stroke="#fb8500" stroke-width="8" stroke-linecap="round"/>
+                        <rect x="12" y="33" width="10" height="10" rx="3" fill="#219ebc"/>
+                        <rect x="78" y="53" width="10" height="10" rx="3" fill="#219ebc"/>
+                      </svg>`
+            },
+            { 
+                singular: 'swing', 
+                plural: 'swings',
+                svg: `<svg class="item-svg" viewBox="0 0 100 100">
+                        <path d="M 20 80 L 35 20 L 80 20 L 90 80" stroke="#00b4d8" stroke-width="6" fill="none"/>
+                        <line x1="48" y1="20" x2="45" y2="62" stroke="#7209b7" stroke-width="3"/>
+                        <line x1="68" y1="20" x2="65" y2="62" stroke="#7209b7" stroke-width="3"/>
+                        <rect x="40" y="62" width="30" height="6" rx="2" fill="#f72585"/>
+                      </svg>`
+            }
+        ];
+
+        let currentQuestion = {};
+        let score = 0;
+        let combo = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); 
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            initAudio();
+            
+            let msg = new SpeechSynthesisUtterance("");
+            window.speechSynthesis.speak(msg);
+
+            generateQuestion();
+        }
+
+        function generateQuestion() {
+            document.getElementById('blank-space').innerText = "____";
+            document.getElementById('blank-space').style.color = "#333";
+            const buttons = document.querySelectorAll('.choice-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('correct', 'wrong');
+                btn.disabled = false;
+            });
+
+            const item = playgroundItems[Math.floor(Math.random() * playgroundItems.length)];
+            const isPlural = Math.random() > 0.5;
+            const isFar = Math.random() > 0.5;
+
+            let answer = '';
+            if (!isPlural && !isFar) answer = 'this';
+            if (!isPlural && isFar) answer = 'that';
+            if (isPlural && !isFar) answer = 'these';
+            if (isPlural && isFar) answer = 'those';
+
+            currentQuestion = {
+                item: item,
+                isPlural: isPlural,
+                isFar: isFar,
+                answer: answer
+            };
+
+            const scene = document.getElementById('scene');
+            scene.className = 'scene-container ' + (isFar ? 'scene-far' : 'scene-near');
+            
+            let visualHTML = item.svg;
+            if (isPlural) {
+                // Display 2 items side-by-side for plurals
+                visualHTML = item.svg + item.svg;
+            }
+            document.getElementById('visual-objects').innerHTML = visualHTML;
+
+            document.getElementById('noun-text').innerText = isPlural ? item.plural : item.singular;
+
+            setTimeout(() => readSentence(false), 500);
+        }
+
+        function readSentence(isComplete) {
+            window.speechSynthesis.cancel();
+            let textToRead = "";
+            let noun = currentQuestion.isPlural ? currentQuestion.item.plural : currentQuestion.item.singular;
+            
+            if (isComplete) {
+                textToRead = `Look at ${currentQuestion.answer} ${noun}!`;
+            } else {
+                textToRead = `Look at ... blank ... ${noun}.`;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textToRead);
+            utterance.rate = 0.8; 
+            utterance.pitch = 1.1; 
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function checkAnswer(selectedWord) {
+            const buttons = document.querySelectorAll('.choice-btn');
+            buttons.forEach(btn => btn.disabled = true);
+
+            const selectedBtn = document.querySelector(`.btn-${selectedWord}`);
+
+            if (selectedWord === currentQuestion.answer) {
+                playSound('correct');
+                selectedBtn.classList.add('correct');
+                document.getElementById('blank-space').innerText = currentQuestion.answer.toUpperCase();
+                document.getElementById('blank-space').style.color = "#51cf66";
+                
+                score += 100;
+                combo += 1;
+                document.getElementById('score').innerText = score;
+                document.getElementById('combo').innerText = combo;
+
+                readSentence(true); 
+
+                setTimeout(generateQuestion, 2500);
+            } else {
+                playSound('wrong');
+                selectedBtn.classList.add('wrong');
+                combo = 0;
+                document.getElementById('combo').innerText = combo;
+                
+                setTimeout(() => {
+                    selectedBtn.classList.remove('wrong');
+                    buttons.forEach(btn => btn.disabled = false);
+                }, 500);
+            }
+        }
+    </script>
+</body>
+</html>
